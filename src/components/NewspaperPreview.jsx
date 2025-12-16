@@ -1,143 +1,193 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useEffect, useState, useRef } from "react";
 
 const NewspaperPreview = forwardRef(
-  ({ name, location, headline, userImage, isVintageDate }, ref) => {
-    const dateStr = isVintageDate
-      ? "বৃহস্পতিবার, ১৬ই ডিসেম্বর, ১৯৭১"
-      : new Date().toLocaleDateString("bn-BD", {
-          weekday: "long",
-          year: "numeric",
-          month: "long",
-          day: "numeric",
-        });
+  ({ name, location, headline, userImage }, ref) => {
+    // State to hold the processed (grayscale) image URL
+    const [processedImage, setProcessedImage] = useState(null);
+    // Hidden canvas ref for image processing
+    const canvasRef = useRef(null);
 
-    const year = isVintageDate ? "১৯৭১" : "২০২৫";
+    const date = new Date().toLocaleDateString("bn-BD", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    // --- FIX 1: IMAGE PROCESSING (Grayscale) ---
+    // This useEffect runs whenever the user uploads a new image.
+    // It draws the image onto a canvas and manually converts pixels to grayscale.
+    // This ensures html2canvas captures the B&W version correctly.
+    useEffect(() => {
+      if (!userImage || !canvasRef.current) {
+        setProcessedImage(null);
+        return;
+      }
+
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      img.onload = () => {
+        // Set canvas dimensions to match image
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        // Draw original image
+        ctx.drawImage(img, 0, 0);
+
+        // Get image data to manipulate pixels
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+
+        // Loop through pixels and convert to grayscale using standard formula
+        for (let i = 0; i < data.length; i += 4) {
+          const r = data[i];
+          const g = data[i + 1];
+          const b = data[i + 2];
+          // Luminosity formula for grayscale
+          const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+
+          data[i] = gray; // Red
+          data[i + 1] = gray; // Green
+          data[i + 2] = gray; // Blue
+          // data[i+3] is Alpha (transparency), leaving it as is
+        }
+
+        // Put processed data back
+        ctx.putImageData(imageData, 0, 0);
+
+        // Additional '71 vintage effect (sepia tone & contrast on top of grayscale)
+        // We do this via globalCompositeOperation to "bake it in"
+        ctx.globalCompositeOperation = "overlay";
+        ctx.fillStyle = "rgba(100, 80, 40, 0.3)"; // Sepia overlay
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Set the processed image as the state to be displayed
+        setProcessedImage(canvas.toDataURL("image/png"));
+      };
+
+      img.src = userImage;
+    }, [userImage]);
 
     return (
       <div
         ref={ref}
-        // ফিক্স ১: shadow-2xl সরিয়ে দেওয়া হয়েছে (এটি এরর দেয়)
-        // ফিক্স ২: bg-white এর বদলে bg-[#ffffff] এবং টেক্সট কালার হেক্স কোডে দেওয়া হয়েছে
-        className="w-full max-w-[550px] min-h-[700px] bg-[#f0f0eb] text-[#000000] p-4 sm:p-6 md:p-8 relative overflow-hidden flex flex-col font-serif"
+        className="w-full max-w-[450px] min-h-[550px] md:min-h-[600px] bg-[#fdfbf7] text-[#1a1a1a] p-4 md:p-6 shadow-2xl relative overflow-hidden mx-auto"
         style={{ fontFamily: '"Times New Roman", Times, serif' }}
       >
-        {/* --- Header Section --- */}
-        <div className="text-center border-b-[4px] border-[#000000] pb-2 mb-1">
+        {/* Old Paper Texture (Overlay) */}
+        <div className="absolute inset-0 bg-[#fef08a] opacity-10 pointer-events-none mix-blend-multiply z-20"></div>
+
+        {/* Hidden Canvas for image processing */}
+        <canvas ref={canvasRef} style={{ display: "none" }} />
+
+        {/* HEADER */}
+        <div className="border-b-4 border-[#000000] pb-2 mb-2 text-center relative z-10">
+          {/* --- FIX 2: TITLE OVERFLOW --- */}
+          {/* Changed text size on small screens to text-3xl and added whitespace-nowrap */}
           <h1
-            className="text-[48px] sm:text-[60px] md:text-[72px] font-black uppercase tracking-tight leading-none text-[#000000] scale-y-90"
+            className="text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-tighter mb-1 leading-none text-[#000000] whitespace-nowrap"
             style={{ fontFamily: "Hind Siliguri" }}
           >
-            বিজয় বার্তা
+           স্বাধীন বাংলা 
           </h1>
-          <p
-            className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 text-[#1f2937]"
-            style={{ fontFamily: "Hind Siliguri" }}
-          >
-            দ্য ন্যাশনাল ডেইলি | স্বাধীন বাংলা প্রেস
-          </p>
+          <div className="flex justify-between text-[10px] md:text-xs font-bold uppercase border-t border-[#000000] pt-1 px-1 md:px-2 text-[#000000]">
+            <span>ঢাকা, বাংলাদেশ</span>
+            <span>{date}</span>
+            <span>১৬ পৃষ্ঠা | ১০ পয়সা</span>
+          </div>
         </div>
 
-        {/* --- Dateline Bar --- */}
-        <div
-          className="flex justify-between items-center text-[10px] sm:text-[11px] font-bold border-b border-[#000000] py-1 mb-4 uppercase flex-wrap gap-2"
-          style={{ fontFamily: "Hind Siliguri" }}
-        >
-          <span>ঢাকা, {location || "বাংলাদেশ"}</span>
-          <span>{dateStr}</span>
-          <span>মূল্য: ১০ পয়সা</span>
-          <span>রেজিঃ ডিএ-১১৭</span>
-        </div>
-
-        {/* --- Headline --- */}
-        <div className="text-center mb-4">
+        {/* HEADLINE */}
+        <div className="text-center py-2 mb-2 md:mb-4 relative z-10">
           <h2
-            className="text-[28px] sm:text-[36px] md:text-[42px] font-black leading-[1.2] text-[#000000]"
+            className="text-2xl md:text-3xl font-black leading-tight text-[#000000]"
             style={{ fontFamily: "Hind Siliguri" }}
           >
-            {headline || "বাংলার আকাশে আজ স্বাধীনতার সূর্য"}
+            {headline || "সারা বাংলায় উড়ছে লাল সবুজের বিজয় নিশান"}
           </h2>
         </div>
 
-        {/* --- Image Section --- */}
-        <div className="mb-4">
-          <div className="border border-[#000000] p-1 bg-[#ffffff]">
-            <div className="w-full h-48 sm:h-56 md:h-64 overflow-hidden bg-[#e5e5e5] relative">
-              {userImage ? (
-                <img
-                  src={userImage}
-                  alt="News"
-                  className="w-full h-full object-cover grayscale contrast-125 brightness-90"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[#9ca3af] text-sm italic font-sans">
-                  ছবি নির্বাচন করা হয়নি
-                </div>
-              )}
+        {/* MAIN CONTENT */}
+        <div className="grid grid-cols-1 gap-3 md:gap-4 relative z-10">
+          {/* Image Section */}
+          <div className="w-full">
+            <div className="relative border-2 border-[#000000] p-1 mb-2 bg-white">
+              <div className="w-full h-48 md:h-64 overflow-hidden bg-[#d1d5db] relative">
+                {processedImage ? (
+                  // Use the PROCESSED image here.
+                  // Removed grayscale/sepia CSS filters as they are now baked into the image.
+                  <img
+                    src={processedImage}
+                    alt="User Grayscale"
+                    className="w-full h-full object-cover contrast-125"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-[#6b7280] text-xs md:text-sm font-sans">
+                    ছবি আপলোড করুন
+                  </div>
+                )}
+                {/* Texture overlay specifically for the image area */}
+                <div className="absolute inset-0 bg-[#605443] opacity-20 pointer-events-none mix-blend-overlay z-10"></div>
+              </div>
+              <p className="text-[10px] text-center mt-1 italic font-sans text-[#4b5563]">
+                চিত্র: {location || "ঢাকা"} থেকে পাঠানো বিশেষ আলোকচিত্র
+              </p>
             </div>
           </div>
-          <p
-            className="text-[10px] sm:text-[11px] mt-1 text-center font-bold italic text-[#333333]"
-            style={{ fontFamily: "Hind Siliguri" }}
-          >
-            চিত্র: {location || "ঢাকা"} থেকে পাঠানো বিশেষ আলোকচিত্র -
-            মুক্তিযোদ্ধা জনতার উল্লাস।
-          </p>
-        </div>
 
-        {/* --- Columns --- */}
-        <div
-          className="text-justify text-[12px] leading-[1.5] text-[#111111] columns-1 sm:columns-2 md:columns-3 gap-5"
-          style={{ columnRule: "1px solid #000000" }}
-        >
-          <p className="mb-3">
-            <span
-              className="float-left text-[42px] leading-[0.8] font-bold mr-1 mt-[-2px]"
+          {/* Text Columns */}
+          <div>
+            <h3
+              className="text-lg md:text-xl font-bold mb-2 border-b border-[#9ca3af] inline-block text-[#000000]"
               style={{ fontFamily: "Hind Siliguri" }}
             >
-              আ
-            </span>
-            জ ১৬ই ডিসেম্বর, {year}। মহান বিজয় দিবস। দীর্ঘ ৯ মাস রক্তক্ষয়ী
-            যুদ্ধের পর অর্জিত হয়েছে এই স্বাধীনতা। আজ বাংলার আকাশ-বাতাস বিজয়ের
-            গানে মুখরিত।
-          </p>
+              {name ? `${name}-এর প্রতিবেদন` : "বিশেষ সংবাদদাতা"}
+            </h3>
 
-          <p className="mb-3">
-            <strong>নিজস্ব সংবাদদাতা, {location || "ঢাকা"}:</strong> আজ ভোর
-            থেকেই রাজপথে মানুষের ঢল। হাতে লাল-সবুজের পতাকা, মুখে "জয় বাংলা"
-            স্লোগান।
-            <br />
-            <br />
-            <strong>{name || "আমাদের প্রতিনিধি"}</strong> জানান, নতুন প্রজন্ম
-            মুক্তিযুদ্ধের চেতনায় দেশ গড়ার শপথ নিয়েছে।
-          </p>
-
-          <p className="mb-3">
-            ৩০ লাখ শহীদের রক্তে কেনা এই স্বাধীনতা। পাকিস্তানি হানাদার বাহিনীর
-            আত্মসমর্পণের মধ্য দিয়ে আজ বিশ্বের মানচিত্রে জন্ম নিল এক নতুন
-            রাষ্ট্র - <strong>বাংলাদেশ</strong>।
-          </p>
-
-          <p>
-            শহরের প্রতিটি কোণায় এখন উৎসবের আমেজ। স্মৃতিসৌধে ফুল দিয়ে শ্রদ্ধা
-            জানাচ্ছেন সর্বস্তরের মানুষ।
-          </p>
+            <div className="text-justify text-xs leading-relaxed columns-1 md:columns-2 gap-4 text-[#1f2937]">
+              <p className="mb-2">
+                <span className="text-4xl float-left mr-1 font-bold leading-none mt-[-4px] font-serif">
+                  আ
+                </span>
+                জ ১৬ই ডিসেম্বর। মহান বিজয় দিবস। দীর্ঘ ৯ মাস রক্তক্ষয়ী যুদ্ধের
+                পর অর্জিত হয়েছে এই স্বাধীনতা। আজ বাংলার আকাশ-বাতাস বিজয়ের গানে
+                মুখরিত।
+              </p>
+              <p className="mb-2">
+                <strong>{name || "আমাদের প্রতিনিধি"}</strong> জানান,{" "}
+                {location || "সারা দেশ"} জুড়ে মানুষ আজ লাল-সবুজের পতাকায়
+                সেজেছে। শিশু থেকে বৃদ্ধ—সবাই আজ রাজপথে নেমে এসেছে বিজয়ের
+                মিছিলে।
+              </p>
+              <p>
+                এই বিজয়ের দিনে আমরা শ্রদ্ধাভরে স্মরণ করি ৩০ লাখ শহীদ ও ২ লাখ
+                মা-বোনকে, যাদের আত্মত্যাগে আমরা পেয়েছি এই স্বাধীন মানচিত্র। জয়
+                বাংলা!
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* --- Footer --- */}
-        <div
-          className="mt-auto pt-4 border-t-[4px] border-[#000000] flex justify-between items-center flex-wrap gap-2"
-          style={{ fontFamily: "Hind Siliguri" }}
-        >
-          <div>
-            <p className="text-[10px] font-bold uppercase">নগর সংস্করণ</p>
-            <p className="text-[9px]">
-              স্বাধীন বাংলা প্রেস কর্তৃক মুদ্রিত ও প্রকাশিত
+        {/* FOOTER / STAMP */}
+        <div className="mt-8 pt-4 border-t-2 border-[#000000] flex justify-between items-center relative z-10">
+          <div className="w-2/3">
+            <p className="text-xs font-bold uppercase text-[#000000]">
+              রেজিঃ ডিএ-১১৭
+            </p>
+            <p
+              className="text-[10px] text-[#000000]"
+              style={{ fontFamily: "Hind Siliguri" }}
+            >
+              সম্পাদক ও প্রকাশক: সুব্রত কুমার বর্মন
             </p>
           </div>
-          <div className="border border-[#000000] px-2 py-1">
-            <p className="text-[10px] font-bold uppercase">
-              বাংলাদেশ চিরজীবী হোক
-            </p>
+
+          {/* Red Stamp */}
+          <div className="w-16 h-16 md:w-20 md:h-20 absolute right-1 bottom-1 md:right-2 md:bottom-2 rounded-full border-4 border-[#b91c1c] text-[#b91c1c] flex flex-col items-center justify-center -rotate-12 opacity-80 font-bold text-[8px] md:text-[10px] uppercase border-dashed bg-transparent z-10 pointer-events-none font-sans">
+            <span>Verified</span>
+            <span className="text-base md:text-lg leading-none">১৯৭১</span>
+            <span>Freedom</span>
           </div>
         </div>
       </div>
