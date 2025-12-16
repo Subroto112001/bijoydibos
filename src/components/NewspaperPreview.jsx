@@ -2,7 +2,6 @@ import React, { forwardRef } from "react";
 
 const NewspaperPreview = forwardRef(
   ({ name, location, headline, userImage, isVintageDate }, ref) => {
-    // তারিখ এখন বাংলায় দেখাবে
     const dateStr = isVintageDate
       ? "বৃহস্পতিবার, ১৬ই ডিসেম্বর, ১৯৭১"
       : new Date().toLocaleDateString("bn-BD", {
@@ -17,8 +16,9 @@ const NewspaperPreview = forwardRef(
     return (
       <div
         ref={ref}
-        // Tailwind classes used for layout
-        className="w-full max-w-[550px] min-h-[700px] bg-[#f0f0eb] text-[#000000] p-4 sm:p-6 md:p-8 shadow-2xl relative overflow-hidden flex flex-col font-serif"
+        // ফিক্স ১: shadow-2xl সরিয়ে দেওয়া হয়েছে (এটি এরর দেয়)
+        // ফিক্স ২: bg-white এর বদলে bg-[#ffffff] এবং টেক্সট কালার হেক্স কোডে দেওয়া হয়েছে
+        className="w-full max-w-[550px] min-h-[700px] bg-[#f0f0eb] text-[#000000] p-4 sm:p-6 md:p-8 relative overflow-hidden flex flex-col font-serif"
         style={{ fontFamily: '"Times New Roman", Times, serif' }}
       >
         {/* --- Header Section --- */}
@@ -30,14 +30,14 @@ const NewspaperPreview = forwardRef(
             বিজয় বার্তা
           </h1>
           <p
-            className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 text-gray-800"
+            className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] mt-1 text-[#1f2937]"
             style={{ fontFamily: "Hind Siliguri" }}
           >
             দ্য ন্যাশনাল ডেইলি | স্বাধীন বাংলা প্রেস
           </p>
         </div>
 
-        {/* --- Dateline Bar (বাংলায়) --- */}
+        {/* --- Dateline Bar --- */}
         <div
           className="flex justify-between items-center text-[10px] sm:text-[11px] font-bold border-b border-[#000000] py-1 mb-4 uppercase flex-wrap gap-2"
           style={{ fontFamily: "Hind Siliguri" }}
@@ -60,7 +60,7 @@ const NewspaperPreview = forwardRef(
 
         {/* --- Image Section --- */}
         <div className="mb-4">
-          <div className="border border-[#000000] p-1 bg-white">
+          <div className="border border-[#000000] p-1 bg-[#ffffff]">
             <div className="w-full h-48 sm:h-56 md:h-64 overflow-hidden bg-[#e5e5e5] relative">
               {userImage ? (
                 <img
@@ -69,8 +69,8 @@ const NewspaperPreview = forwardRef(
                   className="w-full h-full object-cover grayscale contrast-125 brightness-90"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm italic font-sans">
-                  ছবি নির্বাচন করা হয়নি
+                <div className="w-full h-full flex items-center justify-center text-[#9ca3af] text-sm italic font-sans">
+                  ছবি নির্বাচন করা হয়নি
                 </div>
               )}
             </div>
@@ -84,8 +84,7 @@ const NewspaperPreview = forwardRef(
           </p>
         </div>
 
-        {/* --- Editorial Text Columns --- */}
-        {/* columns-1 sm:columns-2 md:columns-3 ব্যবহার করা হয়েছে রেসপন্সিভনেসের জন্য */}
+        {/* --- Columns --- */}
         <div
           className="text-justify text-[12px] leading-[1.5] text-[#111111] columns-1 sm:columns-2 md:columns-3 gap-5"
           style={{ columnRule: "1px solid #000000" }}
@@ -124,7 +123,7 @@ const NewspaperPreview = forwardRef(
           </p>
         </div>
 
-        {/* --- Footer (বাংলায়) --- */}
+        {/* --- Footer --- */}
         <div
           className="mt-auto pt-4 border-t-[4px] border-[#000000] flex justify-between items-center flex-wrap gap-2"
           style={{ fontFamily: "Hind Siliguri" }}
@@ -136,7 +135,9 @@ const NewspaperPreview = forwardRef(
             </p>
           </div>
           <div className="border border-[#000000] px-2 py-1">
-            <p className="text-[10px] font-bold uppercase">বাংলাদেশ চিরজীবী হোক</p>
+            <p className="text-[10px] font-bold uppercase">
+              বাংলাদেশ চিরজীবী হোক
+            </p>
           </div>
         </div>
       </div>
